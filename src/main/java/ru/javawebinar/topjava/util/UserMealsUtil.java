@@ -6,8 +6,9 @@ import ru.javawebinar.topjava.model.UserMealWithExceed;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.Month;
-import java.util.Arrays;
-import java.util.List;
+import java.util.*;
+import java.util.Map.Entry;
+import java.util.stream.Collectors;
 
 /**
  * GKislin
@@ -24,12 +25,33 @@ public class UserMealsUtil {
                 new UserMeal(LocalDateTime.of(2015, Month.MAY, 31,20,0), "Ужин", 510)
         );
         getFilteredMealsWithExceeded(mealList, LocalTime.of(7, 0), LocalTime.of(12,0), 2000);
-//        .toLocalDate();
+//        .toLocalDate(); 
 //        .toLocalTime();
     }
 
     public static List<UserMealWithExceed>  getFilteredMealsWithExceeded(List<UserMeal> mealList, LocalTime startTime, LocalTime endTime, int caloriesPerDay) {
-        // TODO return filtered list with correctly exceeded field
-        return null;
+        Map<Integer, List<UserMeal>> groupedByDate = mealList.stream().collect(Collectors.groupingBy(meal -> meal.getDateTime().getDayOfYear()));
+        System.out.println(groupedByDate);
+        return groupedByDate
+                .entrySet()
+                .stream()
+                .map((dayMeals) ->
+                {
+                    boolean exceed = dayMeals
+                            .getValue()
+                            .stream()
+                            .mapToInt(UserMeal::getCalories)
+                            .sum()>caloriesPerDay;
+                    return dayMeals
+                            .getValue()
+                            .stream()
+                            .filter(userMeal ->
+                            {
+                                LocalTime lt = userMeal.getDateTime().toLocalTime();
+                                return lt.isAfter(startTime) && lt.isBefore(endTime);
+                            })
+                            .map(userMeal -> new UserMealWithExceed(userMeal.getDateTime(), userMeal.getDescription(), userMeal.getCalories(), exceed))
+                            .collect(Collectors.toList());
+                }).flatMap(Collection::stream).collect(Collectors.<UserMealWithExceed>toList());
     }
 }
