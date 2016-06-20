@@ -1,12 +1,14 @@
 package ru.javawebinar.topjava.repository.mock;
 
 import org.springframework.stereotype.Repository;
+import ru.javawebinar.topjava.model.Role;
 import ru.javawebinar.topjava.model.User;
 import ru.javawebinar.topjava.repository.UserRepository;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
 /**
  * GKislin
@@ -14,8 +16,17 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 @Repository
 public class InMemoryUserRepositoryImpl implements UserRepository {
+    public static final Comparator<User> USER_COMPARATOR = Comparator.comparing(User::getName);
     private Map<Integer, User> repository = new ConcurrentHashMap<>();
     private AtomicInteger counter = new AtomicInteger(0);
+
+    public static final int USER_ID = 1;
+    public static final int ADMIN_ID = 2;
+
+    {
+        save(new User(1, "User", "user@yandex.ru", "password", Role.ROLE_USER));
+        save(new User(2, "Admin", "admin@gmail.com", "admin", Role.ROLE_ADMIN));
+    }
 
     @Override
     public boolean delete(int id) {
@@ -42,28 +53,15 @@ public class InMemoryUserRepositoryImpl implements UserRepository {
 
     @Override
     public List<User> getAll() {
-        List<User> luser = new ArrayList<>(repository.values());
-        if(luser.size()==0) {
-            return Collections.emptyList();
-        }
-        luser.sort(new Comparator<User>() {
-            @Override
-            public int compare(User user1, User user2) {
-                return user1.getName().compareTo(user2.getName());
-            }
-        });
-        return luser;
+        return repository.values().stream().sorted(USER_COMPARATOR).collect(Collectors.toList());
     }
 
     @Override
     public User getByEmail(String email) {
-        List<User> luser = new ArrayList<>(repository.values());
-        for(User user:luser) {
-            if(user.getEmail().compareTo(email)==0)
-            {
-                return user;
-            }
-        }
-        return null;
+        Objects.requireNonNull(email);
+        return getAll().stream()
+                .filter(u -> u.getEmail().equals(email))
+                .findFirst()
+                .orElse(null);
     }
 }
